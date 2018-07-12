@@ -1,4 +1,4 @@
-## PrototypeManager - v1.0
+## PrototypeManager - v1.1
 [![Build Status](https://travis-ci.org/ForumHulp/pageaddon.svg?branch=master)](http://vnx.uvnworks.com)
 
 A Tool focused to translate the PSP Version of the Rewrite by the Prototype
@@ -11,9 +11,6 @@ Tested With: Rewrite
 PSV/PS3 support isn't tested.
 
 The FNT is unstable, Can shows artifacts in the font.
-
-You can edit only the original PSB script, after save, the script can't be edited again!
-
 
 ## Hacking Credits:
 Basically I readed the xmoe hacking notes and wrote my tool since i've troubles with the tool created by he.

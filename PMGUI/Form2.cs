@@ -138,12 +138,13 @@ namespace PMGUI {
                 return;
 
             string[] Lines = File.ReadAllLines(fd.FileName);
-
+            textBox1.Text = string.Empty;
             foreach (string Line in Lines) {
                 if (Line.Trim().Length != 3 || Line[1] != '=')
                     continue;
 
-                Remap.Add(Line[0], Line[2]);
+                Remap.Add(Line[2], Line[0]);
+                textBox1.Text += Line[2];
             }
         }
     }

@@ -17,6 +17,9 @@ namespace PrototypeManager
         List<byte[]> LostData;
         List<uint> RetPos;
 
+        bool Edited = false;
+        uint SignaturePos = 0;
+
         public Encoding Encoding = Encoding.GetEncoding(932);
         public PSB(byte[] Script) {
             this.Script = Script;
@@ -38,50 +41,84 @@ namespace PrototypeManager
                     if (Data[x] != Signature[x])
                         Equals = false;
 
-                if (Equals)
-                    throw new NotSupportedException("You can't edit scripts already modified.");//Maybe one day
+                if (Equals) {
+                    SignaturePos = i;
+                    Edited = true;
+                }
             }
 
 
-            for (uint i = BaseOffset; i < Script.Length;) {
-                if (!IsPushString(i)) {
-                    i += GetCmdLen(i);
-                    continue;
+            for (uint i = BaseOffset; i < (Edited ? SignaturePos : Script.LongLength);) {
+                if (IsPushString(i) && !Edited)
+                    PushPos.Add(i);                   
+                if (IsJmp(i) && Edited) {
+                    uint Offset = GetJmp(i);
+                    if (Offset > SignaturePos && IsPushString(Offset)) {
+                        PushPos.Add(i);
+                    }
                 }
-                PushPos.Add(i);
+
                 i += GetCmdLen(i);
             }
 
             List<string> Strings = new List<string>();
-            foreach (uint Pos in PushPos) {
-                uint Len = GetCmdLen(Pos);
-                if (Len < JmpLen) {
-                    List<byte> Buffer = new List<byte>();
-                    uint i = Pos + Len;
-                    int Missing = (int)(JmpLen - Len);
-                    while (Missing > 0) {
-                        uint CLen = GetCmdLen(i);
-                        Buffer.AddRange(GetRange(i, CLen));
-                        Missing -= (int)CLen;
-                        i += CLen;
-                    }
-                    LostData.Add(Buffer.ToArray());
-                    RetPos.Add(i);
-                } else {
-                    LostData.Add(new byte[0]);
-                    RetPos.Add(Pos + Len);
+
+            if (Edited) {
+                foreach (uint Pos in PushPos) {
+                    uint Offset = GetJmp(Pos);
+                    Strings.Add(GetString(Offset));
+
+                    uint Ret = Pos;
+                    Ret += JmpLen;
+                    while (Script[Ret] == 0x00)
+                        Ret++;
+
+                    RetPos.Add(Ret);
+
+                    Offset += GetCmdLen(Offset);
+
+                    uint LostLen = 0;
+                    while (!IsJmp(Offset + LostLen) || GetJmp(Offset + LostLen) != Ret)
+                        LostLen++;
+
+                    byte[] LData = GetRange(Offset, LostLen);
+                    LostData.Add(LData);                    
                 }
-                Strings.Add(GetString(Pos));
+            } else {
+                foreach (uint Pos in PushPos) {
+                    uint Len = GetCmdLen(Pos);
+                    if (Len < JmpLen) {
+                        List<byte> Buffer = new List<byte>();
+                        uint i = Pos + Len;
+                        int Missing = (int)(JmpLen - Len);
+                        while (Missing > 0) {
+                            uint CLen = GetCmdLen(i);
+                            Buffer.AddRange(GetRange(i, CLen));
+                            Missing -= (int)CLen;
+                            i += CLen;
+                        }
+                        LostData.Add(Buffer.ToArray());
+                        RetPos.Add(i);
+                    } else {
+                        LostData.Add(new byte[0]);
+                        RetPos.Add(Pos + Len);
+                    }
+                    Strings.Add(GetString(Pos));
+                }
             }
 
             return Strings.ToArray();
         }
 
         public byte[] Export(string[] Strings) {
+            byte[] BaseScript;
+            if (Edited)
+                BaseScript = GetRange(0, SignaturePos);
+            else
+                BaseScript = GetRange(0, (uint)Script.LongLength);
+
             List<byte> AppendBuffer = new List<byte>(Signature);
 
-            byte[] BaseScript = new byte[Script.Length];
-            Script.CopyTo(BaseScript, 0);
 
             for (int i = 0; i < PushPos.Count; i++) {
                 uint PIndex = PushPos[i];
@@ -156,10 +193,34 @@ namespace PrototypeManager
 
             return Encoding.GetString(Buffer);
         }
+
+        private uint GetJmp(uint Index) {
+            if (!IsJmp(Index))
+                throw new Exception("Bad Jmp Pos");
+
+            byte[] Arr = new byte[4];
+            for (uint i = 0; i < Arr.Length; i++)
+                Arr[i] = Script[Index + i + 4];
+
+            return Tools.Reverse(BitConverter.ToUInt32(Arr, 0)) + BaseOffset;
+        }
+
         private bool IsPushString(uint Index) {
             if (Script[Index] != 0xF0)
                 return false;
             if (Script[Index + 3] != 0x02)
+                return false;
+            return true;
+        }
+
+        private bool IsJmp(uint Index) {
+            if (Script[Index] != 0xF0)
+                return false;
+            if (Script[Index + 2] != 0x05)
+                return false;
+            if (Script[Index + 3] != 0x01)
+                return false;
+            if (Script[Index + 8] != 0x0D)
                 return false;
             return true;
         }

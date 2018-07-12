@@ -129,7 +129,7 @@ namespace PrototypeManager {
             for (uint i = 0; i < Glyphs.Length; i++) {
 
                 if (Glyphs[i].Changed)
-                    BitConverter.GetBytes(GetSJIS(Glyphs[i].Char)).CopyTo(FNT, FHLen + (i * 2));
+                    BitConverter.GetBytes(Tools.Reverse(GetSJIS(Glyphs[i].Char))).CopyTo(FNT, FHLen + (i * 2));
 
 
 
