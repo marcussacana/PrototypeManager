@@ -58,7 +58,8 @@ namespace PrototypeManager
                     }
                 }
 
-                i += GetCmdLen(i);
+                i++;
+                //i += GetCmdLen(i);
             }
 
             List<string> Strings = new List<string>();
@@ -210,6 +211,17 @@ namespace PrototypeManager
                 return false;
             if (Script[Index + 3] != 0x02)
                 return false;
+
+            uint Len = GetUI16(Index + 4);
+
+            for (int i = 0; i < Len - 1;i++) {
+                if (Script[i + 6 + Index] == 0)
+                    return false;
+            }
+
+            if (Script[Index + 6 + Len] != 0)
+                return false;
+
             return true;
         }
 
